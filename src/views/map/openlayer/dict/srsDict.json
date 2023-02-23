@@ -1,0 +1,17 @@
+[
+  {
+    "label": "EPSG:3857(大坐标)",
+    "value": "EPSG:3857",
+    "state": true
+  },
+  {
+    "label": "EPSG:4326(小坐标)",
+    "value": "EPSG:4326",
+    "state": true
+  },
+  {
+    "label": "EPSG:4490(中国大地2000)",
+    "value": "EPSG:4490",
+    "state": false
+  }
+]
