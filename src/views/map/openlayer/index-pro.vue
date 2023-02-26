@@ -7,8 +7,9 @@ import View from "ol/View";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import ImageLayer from "ol/layer/Image";
-import { Image, ImageWMS } from "ol/source";
+import { Cluster, Image, ImageWMS } from "ol/source";
 import GeoJSON from "ol/format/GeoJSON";
+import WFS from "ol/format/WFS";
 import Feature from "ol/Feature";
 import { defaults as interactionDefaults, Select, Draw } from "ol/interaction";
 import { Point, LineString, Polygon } from "ol/geom";
@@ -23,7 +24,11 @@ import {
 } from "ol/style";
 
 import srsDict from "../openlayer/dict/srsDict.json";
-import { styleFunction, layerStyles } from "../openlayer/style/style";
+import {
+  styleFunction,
+  layerStyles,
+  numTextStyleFunction,
+} from "../openlayer/style/style";
 </script>
 
 <template>
@@ -77,8 +82,12 @@ import { styleFunction, layerStyles } from "../openlayer/style/style";
         </el-select>
         <!-- <br /> -->
         <el-button size="small" @click="printMapInfo()">调试</el-button>
+        <el-button size="small" @click="resetMap()">重置</el-button>
         <el-button size="small" @click="doLoadMark()">
           {{ !showMarkSwitch ? "显示标注" : "隐藏标注" }}
+        </el-button>
+        <el-button size="small" @click="doShowText()">
+          {{ !showTextSwitch ? "显示文字" : "隐藏文字" }}
         </el-button>
         <el-button size="small" @click="doLoadRoad()">
           {{ !showRoadSwitch ? "显示道路" : "隐藏道路" }}
@@ -95,48 +104,135 @@ import { styleFunction, layerStyles } from "../openlayer/style/style";
         <el-button size="small" @click="doCheckStartToEnd()">
           {{ !checkRoadSwitch ? "开启选点" : "关闭选点" }}
         </el-button>
-
-        <el-button
-          size="small"
-          @click="doLoadShortestRoad()"
-          :disabled="startToEnd.length != 2"
-          >计算路径
+        <br />
+        <el-button size="small" @click="doDoubleMap()">
+          {{ !showDoubleSwitch ? "开启双地图" : "关闭双地图" }}
         </el-button>
+        <!-- <el-button size="small" @click="doLoadDoubleMap()">
+          加载双地图
+        </el-button> -->
+        <el-tag> 起点 </el-tag>
+        <el-select
+          style="width: 100px"
+          v-model="typeValue"
+          placeholder="请选择特征类型"
+          size="small"
+        >
+          <el-option
+            v-for="item in typeDict"
+            :key="item.key"
+            :label="item.key"
+            :value="item.value"
+          />
+        </el-select>
+        <el-input
+          placeholder="请输入特征Text"
+          size="small"
+          style="width: 100px"
+          v-model="textValue"
+        >
+        </el-input>
+        <!-- <el-button size="small" @click="doLocationFeature()">定位 </el-button> -->
+        <el-tag> 终点 </el-tag>
+        <el-select
+          style="width: 100px"
+          v-model="targetLevelValue"
+          placeholder="请选择目标楼层"
+          size="small"
+        >
+          <el-option
+            v-for="item in currentMapInfoList"
+            :key="item.layer_name"
+            :label="item.layer_level"
+            :value="item.layer_name"
+          />
+        </el-select>
         <el-input
           placeholder="请输入车位编号"
           size="small"
-          style="width: 200px"
+          style="width: 100px"
           v-model="slotValue"
         >
         </el-input>
         <el-button size="small" @click="doLoadCarRoad()">导航 </el-button>
-        <el-button size="small" @click="doFastLoadCarRoad()"
-          >一键导航
+        <!-- <el-button
+          size="small"
+          @click="doLoadShortestRoad()"
+          :disabled="startToEnd.length != 2"
+          >计算路径
+        </el-button> -->
+        <el-button size="small" @click="doFastLoadCarRoad()">
+          一键导航(模拟)
         </el-button>
       </a-layout-header>
       <a-layout-content>
-        <div id="map" tabindex="0" class="map"></div>
+        <div class="map-box">
+          <div
+            id="map1"
+            :style="
+              'width:' +
+              map1Style.widht +
+              'px;' +
+              'height:' +
+              map1Style.height +
+              'px;'
+            "
+            tabindex="0"
+            class="map1"
+          ></div>
+          <div
+            id="map2"
+            :style="
+              'width:' +
+              map2Style.widht +
+              'px;' +
+              'height:' +
+              map2Style.height +
+              'px;'
+            "
+            tabindex="1"
+            class="map2"
+          ></div>
+        </div>
       </a-layout-content>
     </a-layout>
   </div>
 </template>
 
 <script>
+const targetLevelValue = ref("B3");
+const typeValue = ref("mark");
+const textValue = ref("查询机");
 const slotValue = ref("A2-001");
 const mapValue = ref("");
 const levelValue = ref("");
 const coordinateTypeValue = ref("EPSG:4326");
+
+const typeDict = [
+  {
+    key: "车位编号",
+    value: "text",
+  },
+  {
+    key: "查询机",
+    value: "mark",
+  },
+];
+
 export default {
   data() {
     return {
       key: "",
       mapInfoList: [],
       currentMapInfoList: [],
-      currentMapInfo: {},
+      currentMapInfo: null,
+      targetMapInfo: null,
       startToEnd: [],
       //
-      map: "", // map 地图对象
-      view: "", // view 视图对象
+      map1: "", // map 地图对象
+      view1: "", // view 视图对象
+      map2: "",
+      view2: "",
 
       // 图层
       tileLayer: "",
@@ -144,48 +240,82 @@ export default {
       parkLayer: "", // 车场图层
       markLayer: "", // 标注图层
       roadLayer: "",
+      textLayer: "",
       shortestRoadLayer: "",
       startLayer: "",
       endLayer: "",
       carLayer: "",
       //
       carStyleLayer: "",
+      // 矢量标注源
+      clusterSource: "",
       // 按键开关组
       showMarkSwitch: false,
       showRoadSwitch: false,
+      showTextSwitch: false,
       checkRoadSwitch: false,
       showCarSwitch: false,
       showSelectTipSwitch: false,
       showHoverTipSwitch: false,
+      showDoubleSwitch: false,
 
       // 选择器
       carSelect: "", // 车位选择器
+
+      // 样式变量
+      map1Style: {
+        widht: "width: 50%",
+        height: "700px",
+      },
+      map2Style: {
+        widht: "width: 50%",
+        height: "700px",
+      },
+
+      // 双地图
+      park2Layer: "",
     };
   },
   methods: {
     printMapInfo() {
       console.table({
-        坐标系: this.view.getProjection().getCode(),
-        深度: this.view.getZoom(),
-        分辨率: this.view.getResolution(),
-        图层数: this.map.getLayers().getLength(),
+        坐标系: this.view2.getProjection().getCode(),
+        深度: this.view2.getZoom(),
+        分辨率: this.view2.getResolution(),
+        图层数: this.map2.getLayers().getLength(),
       });
-      console.log(this.view);
+      console.log(this.view2);
     },
     initView() {
-      this.view = new View({
+      this.view1 = new View({
         projection: "EPSG:4326",
         center: [0, 0],
         zoom: 1,
+        interactions: [],
+      });
+    },
+    initView2() {
+      this.view2 = new View({
+        projection: "EPSG:4326",
+        center: [0, 0],
+        zoom: 1,
+        interactions: [],
       });
     },
     initMap() {
-      this.map = new Map({
-        target: "map",
+      this.map1 = new Map({
+        target: "map1",
         controls: [],
-        interactions: interactionDefaults(),
         layers: [],
-        view: this.view,
+        view: this.view1,
+      });
+    },
+    initMap2() {
+      this.map2 = new Map({
+        target: "map2",
+        controls: [],
+        layers: [],
+        view: this.view1,
       });
     },
     listMap() {
@@ -199,12 +329,87 @@ export default {
           this.mapInfoList = res.data.data;
         });
     },
+    // 开启双地图
+    doDoubleMap() {
+      this.initMap2();
+      this.showDoubleSwitch = !this.showDoubleSwitch;
+      if (this.showDoubleSwitch) {
+        var widht = (document.body.clientWidth - 150) / 2;
+        var height = document.body.clientHeight - 50;
+        this.map1Style.widht = widht;
+        this.map1Style.height = height;
+        this.map2Style.widht = widht;
+        this.map2Style.height = height;
+      } else {
+        var widht = document.body.clientWidth - 150;
+        var height = document.body.clientHeight - 50;
+        this.map1Style.widht = widht;
+        this.map1Style.height = height;
+        this.map2Style.widht = 0;
+        this.map2Style.height = 0;
+      }
+    },
+    // 加载双地图
+    doLoadDoubleMap() {
+      var currentMapInfoExt;
+      if (this.currentMapInfoList.length > 0) {
+        currentMapInfoExt = this.currentMapInfoList.filter(
+          (item) => item.layer_level == targetLevelValue.value
+        )[0];
+        // console.log(currentMapInfoExt);
+        var { layer_name, extent, center } = currentMapInfoExt;
+        var key = layer_name.toLowerCase();
+        this.initMap2();
+        this.initView2();
+        this.parkLayer2 = new VectorLayer({
+          source: new VectorSource({
+            format: new GeoJSON(),
+            url: `http://42.192.222.62:8080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${key}&outputFormat=application/json&srsname=EPSG:4326`,
+          }),
+          style: styleFunction,
+        });
+        this.map2.addLayer(this.parkLayer2);
+        var extents = extent.replace(/[()]/g, "").split(",");
+        var startX = parseFloat(extents[0]);
+        var startY = parseFloat(extents[2]);
+        var endX = parseFloat(extents[1]);
+        var endY = parseFloat(extents[3]);
+        this.view1.fit([startX, startY, endX, endY]);
+        this.map2.render();
+      }
+    },
+    // 重置地图
+    resetMap() {
+      this.map1.removeLayer(this.shortestRoadLayer);
+      this.map1.removeLayer(this.startLayer);
+      this.map1.removeLayer(this.endLayer);
+      this.map1.removeLayer(this.carLayer);
+      this.map1.removeLayer(this.carStyleLayer);
+      this.map1.removeLayer(this.roadLayer);
+      this.map1.removeLayer(this.markLayer);
+      this.map1.removeLayer(this.parkLayer);
+      this.map1.removeLayer(this.textLayer);
+      this.showMarkSwitch = false;
+      this.showRoadSwitch = false;
+      this.checkRoadSwitch = false;
+      this.showMarkSwitch = false;
+      this.showSelectTipSwitch = false;
+      this.showHoverTipSwitch = false;
+    },
     changeMap(value) {
+      this.resetMap();
       console.log(value);
       this.currentMapInfoList = this.mapInfoList.filter(
         (item) => item.park_name == value
       );
+      console.log(this.currentMapInfoList);
+      var currentLevel =
+        levelValue.value || this.currentMapInfoList[0].layer_level;
+      this.currentMapInfo = this.currentMapInfoList.filter(
+        (item) => item.layer_level == currentLevel
+      )[0];
       this.currentMapInfo = this.currentMapInfoList[0];
+      mapValue.value = value;
       levelValue.value = this.currentMapInfo.layer_level;
       console.table(this.currentMapInfo);
       var { layer_name, extent, center } = this.currentMapInfo;
@@ -216,14 +421,72 @@ export default {
         }),
         style: styleFunction,
       });
-      this.map.addLayer(this.parkLayer);
-      this.view.setZoom(11.786666666666667);
-      this.view.setCenter([116.09564230861724, 38.9752956321172]);
-      this.view.setRotation(Math.PI / 2);
-      this.map.render();
-      // this.map.renderSync();
+
+      this.map1.addLayer(this.parkLayer);
+
+      var centers = center.replace(/[{}]/g, "").split(",");
+      console.log(centers);
+      var extents = extent.replace(/[()]/g, "").split(",");
+      var startX = parseFloat(extents[0]);
+      var startY = parseFloat(extents[2]);
+      var endX = parseFloat(extents[1]);
+      var endY = parseFloat(extents[3]);
+      // this.view1.setZoom(11.786666666666667);
+      // this.view1.setCenter([centers[0], centers[1]]);
+      this.view1.fit([startX, startY, endX, endY]);
+      // this.view1.setRotation(Math.PI / 2);
+      // this.map1.renderSync();
+      if (this.showDoubleSwitch) {
+        this.targetMapInfo = this.currentMapInfoList.filter(
+          (item) => item.layer_level == targetLevelValue.value
+        )[0];
+        var target_key = this.targetMapInfo.layer_name.toLowerCase();
+        this.parkLayer2 = new VectorLayer({
+          source: new VectorSource({
+            format: new GeoJSON(),
+            url: `http://42.192.222.62:8080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${target_key}&outputFormat=application/json&srsname=EPSG:4326`,
+          }),
+          style: styleFunction,
+        });
+        this.map2.addLayer(this.parkLayer2);
+      }
     },
-    changeLevel() {},
+    changeLevel(value) {
+      this.resetMap();
+      this.map1.removeLayer(this.parkLayer);
+      console.log(value);
+      this.currentMapInfo = this.mapInfoList.filter(
+        (item) => item.layer_name == value
+      )[0];
+      console.table(this.currentMapInfo);
+      var { layer_name, extent, center } = this.currentMapInfo;
+      var key = layer_name.toLowerCase();
+      this.parkLayer = new VectorLayer({
+        source: new VectorSource({
+          format: new GeoJSON(),
+          url: `http://42.192.222.62:8080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${key}&outputFormat=application/json&srsname=EPSG:4326`,
+        }),
+        style: styleFunction,
+      });
+      this.map1.addLayer(this.parkLayer);
+      // if (this.currentMapInfo.layer_level == "B2") {
+      //   this.view1.setZoom(11.786666666666667);
+      // } else {
+      //   this.view1.setZoom(5.099456960967731);
+      // }
+      var centers = center.replace(/[{}]/g, "").split(",");
+      this.view1.setCenter([centers[0], centers[1]]);
+      var extents = extent.replace(/[()]/g, "").split(",");
+      var startX = parseFloat(extents[0]);
+      var startY = parseFloat(extents[2]);
+      var endX = parseFloat(extents[1]);
+      var endY = parseFloat(extents[3]);
+      // this.view1.setZoom(11.786666666666667);
+      // this.view1.setCenter([centers[0], centers[1]]);
+      this.view1.fit([startX, startY, endX, endY]);
+      // this.view1.setRotation(Math.PI / 2);
+      this.map1.render();
+    },
     changeCoordinateType() {},
     // 显示&隐藏标注
     doLoadMark() {
@@ -239,13 +502,42 @@ export default {
           }),
           style: styleFunction,
         });
-        this.map.addLayer(this.markLayer);
-        // this.view.on("change:resolution", function () {
+        this.map1.addLayer(this.markLayer);
+        // this.view1.on("change:resolution", function () {
         //   console.log(layerStyles["HTC-车位号"][0].getText().getFont());
         // });
         console.log(this.markLayer.getStyle());
       } else {
-        this.map.removeLayer(this.markLayer);
+        this.map1.removeLayer(this.markLayer);
+      }
+    },
+    doShowText() {
+      this.showTextSwitch = !this.showTextSwitch;
+      if (this.showTextSwitch) {
+        var { layer_key, layer_level, layer_name, extent, center } =
+          this.currentMapInfo;
+        var key = (layer_key + "_" + layer_level + "_" + "text").toLowerCase();
+        this.clusterSource = new Cluster({
+          distance: 50,
+          source: new VectorSource({
+            format: new GeoJSON(),
+            url: `http://42.192.222.62:8080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${key}&outputFormat=application/json&srsname=EPSG:4326`,
+          }),
+        });
+        this.textLayer = new VectorLayer({
+          source: this.clusterSource,
+          style: numTextStyleFunction,
+        });
+        // this.textLayer = new VectorLayer({
+        //   source: new VectorSource({
+        //     format: new GeoJSON(),
+        //     url: `http://42.192.222.62:8080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${key}&outputFormat=application/json&srsname=EPSG:4326`,
+        //   }),
+        //   style: styleFunction,
+        // });
+        this.map1.addLayer(this.textLayer);
+      } else {
+        this.map1.removeLayer(this.textLayer);
       }
     },
     doLoadRoad() {
@@ -260,9 +552,9 @@ export default {
             url: `http://42.192.222.62:8080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${key}&outputFormat=application/json&srsname=EPSG:4326`,
           }),
         });
-        this.map.addLayer(this.roadLayer);
+        this.map1.addLayer(this.roadLayer);
       } else {
-        this.map.removeLayer(this.roadLayer);
+        this.map1.removeLayer(this.roadLayer);
       }
     },
     doLoadCarStyle() {
@@ -285,9 +577,9 @@ export default {
             this.carStyleLayer.getSource().addFeature(carFeature);
           }
         });
-        this.map.addLayer(this.carStyleLayer);
+        this.map1.addLayer(this.carStyleLayer);
       } else {
-        this.map.removeLayer(this.carStyleLayer);
+        this.map1.removeLayer(this.carStyleLayer);
       }
     },
     doHoverShowTip() {
@@ -296,7 +588,7 @@ export default {
         var hoverShowTip = (event) => {
           // console.log(event.coordinate);
         };
-        this.map.on("pointermove", hoverShowTip);
+        this.map1.on("pointermove", hoverShowTip);
       }
     },
     doSelectShowTip() {
@@ -321,9 +613,10 @@ export default {
           style: selectedStyle,
           pixelTolerance: 50,
         });
-        this.map.addInteraction(this.carSelect);
+        this.map1.addInteraction(this.carSelect);
         var selectShowTip = (event) => {
           var feature = event.selected[0];
+          console.log(feature);
           feature.setStyle(selectedStyle);
         };
         this.carSelect.on("select", selectShowTip);
@@ -354,36 +647,39 @@ export default {
               source: new VectorSource(),
             });
             this.startLayer.getSource().addFeature(anchor);
-            this.map.addLayer(this.startLayer);
+            this.map1.addLayer(this.startLayer);
           } else if (this.startToEnd.length == 2) {
             this.endLayer = new VectorLayer({
               source: new VectorSource(),
             });
             this.endLayer.getSource().addFeature(anchor);
-            this.map.addLayer(this.endLayer);
+            this.map1.addLayer(this.endLayer);
           } else {
             this.startToEnd = [];
-            this.map.removeLayer(this.shortestRoadLayer);
-            this.map.removeLayer(this.startLayer);
-            this.map.removeLayer(this.endLayer);
-            this.map.removeLayer(this.carLayer);
+            this.map1.removeLayer(this.shortestRoadLayer);
+            this.map1.removeLayer(this.startLayer);
+            this.map1.removeLayer(this.endLayer);
+            this.map1.removeLayer(this.carLayer);
             this.startLayer = "";
             this.endLayer = "";
           }
         };
-        this.map.on("singleclick", singleclickListener);
+        this.map1.on("singleclick", singleclickListener);
       } else {
-        this.map.un("singleclick", singleclickListener);
+        this.map1.un("singleclick", singleclickListener);
         this.startToEnd = [];
-        this.map.removeLayer(this.shortestRoadLayer);
-        this.map.removeLayer(this.startLayer);
-        this.map.removeLayer(this.endLayer);
-        this.map.removeLayer(this.carLayer);
+        this.map1.removeLayer(this.shortestRoadLayer);
+        this.map1.removeLayer(this.startLayer);
+        this.map1.removeLayer(this.endLayer);
+        this.map1.removeLayer(this.carLayer);
         this.startLayer = "";
         this.endLayer = "";
       }
     },
     doLoadShortestRoad() {
+      var { layer_key, layer_level, layer_name, extent, center } =
+        this.currentMapInfo;
+      console.log(this.startToEnd);
       var startPoint = this.startToEnd[0];
       var endPoint = this.startToEnd[1];
       var viewparams = [
@@ -391,24 +687,39 @@ export default {
         "y1:" + startPoint[1],
         "x2:" + endPoint[0],
         "y2:" + endPoint[1],
+        "layer_name:" +
+          ((layer_key + "_" + layer_level + "_" + "road").toLowerCase() ||
+            "bj_hx_live_wks_0223_b2_road"),
       ];
-      const params = {
-        LAYERS: "park_map:load_road_shortest",
-        VERSION: "1.1.0",
-        REQUEST: "GetMap",
-        FORMAT: "image/png",
-        exceptions: "application/vnd.ogc.se_inimage",
+      // WFS 请求
+      const wfsParams = {
+        version: "1.1.0",
+        request: "GetFeature",
+        typeName: "park_map:load_road_shortest_v2",
+        outputFormat: "application/json",
+        srsname: "EPSG:4326",
+        viewparams: viewparams.join(";"),
       };
-      params.viewparams = viewparams.join(";");
-      this.shortestRoadLayer = new ImageLayer({
-        source: new ImageWMS({
-          url: "http://42.192.222.62:8080/geoserver/wms",
-          params,
+      var paramsStr = new URLSearchParams(wfsParams).toString();
+      console.log(paramsStr);
+      this.shortestRoadLayer = new VectorLayer({
+        source: new VectorSource({
+          format: new GeoJSON(),
+          url: "http://42.192.222.62:8080/geoserver/wfs?" + paramsStr,
+        }),
+        style: new Style({
+          fill: new Fill({
+            color: "#ff0000",
+          }),
+          stroke: new Stroke({
+            color: "#ff0000",
+            width: 4,
+          }),
         }),
       });
-      this.map.addLayer(this.shortestRoadLayer);
-      this.map.render();
-      // this.view.animate({
+      this.map1.addLayer(this.shortestRoadLayer);
+      this.map1.render();
+      // this.view1.animate({
       //   center: [
       //     (startPoint[0] + endPoint[0]) / 2,
       //     (startPoint[1] + endPoint[1]) / 2,
@@ -446,13 +757,71 @@ export default {
         })
       );
       this.carLayer.getSource().addFeature(anchor);
-      this.map.addLayer(this.carLayer);
-      // this.view.animate({
+      this.map1.addLayer(this.carLayer);
+      // this.view1.animate({
       //   center: center,
       //   duration: 2000,
       // });
-      this.map.render();
+      this.map1.render();
       this.startToEnd.push(center);
+    },
+    // 特征定位
+    async doLocationFeature(text, type) {
+      text = text || textValue.value;
+      type = type || typeValue.value;
+      var location = [];
+      await axios
+        .post(
+          `http://42.192.222.62:10010/feature/location?layer_level=${this.currentMapInfo.layer_level}&layer_key=${this.currentMapInfo.layer_key}&layer_type=${type}&pres_text=${text}`
+        )
+        .then((res) => {
+          console.log(res.data);
+          location = res.data.data;
+        })
+        .catch(function (error) {
+          alert("未找到");
+          return;
+        });
+      if (this.startToEnd.length == 0) {
+        // 起点定位
+        this.startLayer = new VectorLayer({
+          source: new VectorSource(),
+        });
+        var anchor = new Feature({
+          geometry: new Point(location),
+        });
+        anchor.setStyle(
+          new Style({
+            image: new Icon({
+              src: "../定位.png",
+              anchor: [0, 0],
+            }),
+          })
+        );
+        this.startLayer.getSource().addFeature(anchor);
+        this.map1.addLayer(this.startLayer);
+      } else {
+        // 终点定位
+        this.endLayer = new VectorLayer({
+          source: new VectorSource(),
+        });
+        var anchor = new Feature({
+          geometry: new Point(location),
+        });
+        anchor.setStyle(
+          new Style({
+            image: new Icon({
+              src: "../定位.png",
+              anchor: [0, 0],
+            }),
+          })
+        );
+        this.endLayer.getSource().addFeature(anchor);
+        this.map1.addLayer(this.endLayer);
+      }
+      this.map1.render();
+      this.startToEnd.push(location);
+      console.log(this.startToEnd);
     },
     doTestRandomStart() {
       var { layer_key, layer_level, layer_name, extent, center } =
@@ -484,53 +853,66 @@ export default {
         source: new VectorSource(),
       });
       this.startLayer.getSource().addFeature(anchor);
-      this.map.addLayer(this.startLayer);
-      // this.view.animate({
+      this.map1.addLayer(this.startLayer);
+      // this.view1.animate({
       //   center: center,
       //   duration: 1000,
       // });
-      this.map.render();
+      this.map1.render();
     },
     doFastLoadCarRoad() {
+      this.listMap();
       this.showCarSwitch = false;
       this.showMarkSwitch = false;
+      this.showTextSwitch = false;
       this.startToEnd = [];
-      this.map.removeLayer(this.shortestRoadLayer);
-      this.map.removeLayer(this.startLayer);
-      this.map.removeLayer(this.endLayer);
-      this.map.removeLayer(this.carLayer);
-      this.map.removeLayer(this.shortestRoadLayer);
-      this.map.removeLayer(this.carStyleLayer);
-      this.map.removeLayer(this.parkLayer);
-      this.map.removeLayer(this.markLayer);
-      this.changeMap("华熙LIVE·五棵松");
-      var { layer_key, layer_level, layer_name, extent, center } =
-        this.currentMapInfo;
+      this.map1.removeLayer(this.shortestRoadLayer);
+      this.map1.removeLayer(this.startLayer);
+      this.map1.removeLayer(this.endLayer);
+      this.map1.removeLayer(this.carLayer);
+      this.map1.removeLayer(this.carStyleLayer);
+      this.map1.removeLayer(this.parkLayer);
+      this.map1.removeLayer(this.markLayer);
+      // this.changeMap("华熙LIVE·五棵松");
+      console.log(this.currentMapInfoList);
+      console.log(this.currentMapInfo);
+      console.log(this.mapInfoList);
+      var { park_name, layer_key, layer_level, layer_name, extent, center } =
+        this.currentMapInfo || this.mapInfoList[0];
+      console.log(park_name, layer_key);
+      this.changeMap(park_name);
       var step1 = false;
-      this.map.on("rendercomplete", (event) => {
+      this.map1.on("rendercomplete", (event) => {
         if (!step1) {
           this.doLoadCarStyle();
           step1 = !step1;
           var step2 = false;
-          this.map.on("rendercomplete", (event) => {
+          this.map1.on("rendercomplete", (event) => {
             if (!step2) {
               this.doLoadMark();
               step2 = !step2;
               var step3 = false;
-              this.map.on("rendercomplete", (event) => {
+              this.map1.on("rendercomplete", (event) => {
                 if (!step3) {
-                  this.doTestRandomStart();
+                  this.doShowText();
                   step3 = !step3;
                   var step4 = false;
-                  this.map.on("rendercomplete", (event) => {
+                  this.map1.on("rendercomplete", (event) => {
                     if (!step4) {
-                      this.doLoadCarRoad();
+                      this.doLocationFeature();
                       step4 = !step4;
                       var step5 = false;
-                      this.map.on("rendercomplete", (event) => {
+                      this.map1.on("rendercomplete", (event) => {
                         if (!step5) {
-                          this.doLoadShortestRoad();
+                          this.doLoadCarRoad();
                           step5 = !step5;
+                          var step6 = false;
+                          this.map1.on("rendercomplete", (event) => {
+                            if (!step6) {
+                              this.doLoadShortestRoad();
+                              step6 = !step6;
+                            }
+                          });
                         }
                       });
                     }
@@ -547,15 +929,52 @@ export default {
     this.listMap();
     this.initView();
     this.initMap();
+    var widht = document.body.clientWidth - 150;
+    var height = document.body.clientHeight - 50;
+    this.map1Style.widht = widht;
+    this.map1Style.height = height;
+    this.map2Style.widht = 0;
+    this.map2Style.height = 0;
+    window.onresize = () => {
+      return (() => {
+        if (this.showDoubleSwitch) {
+          var widht = (document.body.clientWidth - 150) / 2;
+          var height = document.body.clientHeight - 50;
+          this.map1Style.widht = widht;
+          this.map1Style.height = height;
+          this.map2Style.widht = widht;
+          this.map2Style.height = height;
+        } else {
+          var widht = document.body.clientWidth - 150;
+          var height = document.body.clientHeight - 50;
+          this.map1Style.widht = widht;
+          this.map1Style.height = height;
+          this.map2Style.widht = 0;
+          this.map2Style.height = height;
+        }
+      })();
+    };
   },
 };
 </script>
 
 <style scoped>
-.map {
+.map-box {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
   width: 100%;
-  height: 800px;
+}
+.map1 {
+  /* width: 50%; */
+  /* height: 700px; */
   border: 1px solid black;
+}
+.map2 {
+  /* width: 50%; */
+  /* height: 700px; */
+  border: 1px solid rgb(255, 0, 119);
+  /* background-color: antiquewhite; */
 }
 
 .ant-layout-header {

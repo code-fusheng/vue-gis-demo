@@ -1,0 +1,28 @@
+      // const params = {
+      //   LAYERS: "park_map:load_road_shortest",
+      //   VERSION: "1.1.0",
+      //   REQUEST: "GetMap",
+      //   FORMAT: "image/png",
+      //   exceptions: "application/vnd.ogc.se_inimage",
+      // };
+      // params.viewparams = viewparams.join(";");
+      // this.shortestRoadLayer = new ImageLayer({
+      //   source: new ImageWMS({
+      //     url: "http://42.192.222.62:8080/geoserver/wms",
+      //     params,
+      //   }),
+      // });
+
+
+        // this.clusterSource = new Cluster({
+        //   distance: 40,
+        //   source: new VectorSource({
+        //     format: new GeoJSON(),
+        //     url: `http://42.192.222.62:8080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${key}&outputFormat=application/json&srsname=EPSG:4326`,
+        //   }),
+        //   style: styleFunction,
+        // });
+        // this.markLayer = new VectorLayer({
+        //   source: this.clusterSource,
+        //   style: styleFunction,
+        // });

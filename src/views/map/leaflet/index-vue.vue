@@ -4,10 +4,10 @@ import { LMap, LTileLayer, LGeoJson } from "@vue-leaflet/vue-leaflet";
 import { CRS, latLng } from "leaflet";
 import "proj4leaflet";
 import proj4 from "proj4";
-import park from "../../../data/park-border-1.json";
+// import park from "";
 // import fullPark from "../../../data/park-pro.json";
-import wksParkV2 from "../../../data/wks-park-v2.json";
-import demo1 from "../../../data/demo1.json";
+// import wksParkV2 from "../../../data/wks-park-v2.json";
+// import demo1 from "../../../data/demo1.json";
 import { ref } from "vue";
 </script>
 
@@ -178,10 +178,10 @@ export default {
       this.center = [47.31322, -1.319482];
     },
     testPark() {
-      this.geojson = park;
+      // this.geojson = park;
     },
     testFullPark() {
-      this.geojson = wksParkV2;
+      // this.geojson = wksParkV2;
     },
     clearMap() {
       this.geojson = "";
