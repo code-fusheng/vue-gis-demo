@@ -104,17 +104,30 @@ import {
         <el-button size="small" @click="doCheckStartToEnd()">
           {{ !checkRoadSwitch ? "开启选点" : "关闭选点" }}
         </el-button>
-        <br />
         <el-button size="small" @click="doDoubleMap()">
           {{ !showDoubleSwitch ? "开启双地图" : "关闭双地图" }}
         </el-button>
         <!-- <el-button size="small" @click="doLoadDoubleMap()">
           加载双地图
         </el-button> -->
+        <br />
         <el-tag> 起点 </el-tag>
         <el-select
+          style="width: 70px"
+          v-model="startLevelValue"
+          placeholder="请选择起点楼层"
+          size="small"
+        >
+          <el-option
+            v-for="item in currentMapInfoList"
+            :key="item.layer_name"
+            :label="item.layer_level"
+            :value="item.layer_name"
+          />
+        </el-select>
+        <el-select
           style="width: 100px"
-          v-model="typeValue"
+          v-model="startTypeValue"
           placeholder="请选择特征类型"
           size="small"
         >
@@ -129,14 +142,14 @@ import {
           placeholder="请输入特征Text"
           size="small"
           style="width: 100px"
-          v-model="textValue"
+          v-model="startTextValue"
         >
         </el-input>
         <!-- <el-button size="small" @click="doLocationFeature()">定位 </el-button> -->
         <el-tag> 终点 </el-tag>
         <el-select
-          style="width: 100px"
-          v-model="targetLevelValue"
+          style="width: 70px"
+          v-model="endLevelValue"
           placeholder="请选择目标楼层"
           size="small"
         >
@@ -144,17 +157,30 @@ import {
             v-for="item in currentMapInfoList"
             :key="item.layer_name"
             :label="item.layer_level"
-            :value="item.layer_name"
+            :value="item.layer_level"
+          />
+        </el-select>
+        <el-select
+          style="width: 100px"
+          v-model="endTypeValue"
+          placeholder="请选择特征类型"
+          size="small"
+        >
+          <el-option
+            v-for="item in typeDict"
+            :key="item.key"
+            :label="item.key"
+            :value="item.value"
           />
         </el-select>
         <el-input
           placeholder="请输入车位编号"
           size="small"
           style="width: 100px"
-          v-model="slotValue"
+          v-model="endTextValue"
         >
         </el-input>
-        <el-button size="small" @click="doLoadCarRoad()">导航 </el-button>
+        <el-button size="small" @click="doLoadCarRoad()">查找 </el-button>
         <!-- <el-button
           size="small"
           @click="doLoadShortestRoad()"
@@ -200,22 +226,34 @@ import {
 </template>
 
 <script>
-const targetLevelValue = ref("B3");
-const typeValue = ref("mark");
-const textValue = ref("查询机");
-const slotValue = ref("A2-001");
 const mapValue = ref("");
 const levelValue = ref("");
 const coordinateTypeValue = ref("EPSG:4326");
 
+// 起点终点选定值
+const startTypeValue = ref("查询机");
+const startLevelValue = ref("B2");
+const startTextValue = ref("查询机");
+
+const endLevelValue = ref("B3");
+const endTypeValue = ref("车位");
+const endTextValue = ref("A2-001");
+
 const typeDict = [
   {
-    key: "车位编号",
-    value: "text",
+    key: "车位",
+    value: "车位",
+    type: "text",
   },
   {
     key: "查询机",
-    value: "mark",
+    value: "查询机",
+    type: "mark",
+  },
+  {
+    key: "电梯",
+    value: "电梯",
+    type: "text",
   },
 ];
 
@@ -274,6 +312,9 @@ export default {
 
       // 双地图
       park2Layer: "",
+
+      map2StartToEnd: [],
+      map2ShortestRoadLayer: "",
     };
   },
   methods: {
@@ -330,7 +371,7 @@ export default {
         });
     },
     // 开启双地图
-    doDoubleMap() {
+    async doDoubleMap() {
       this.initMap2();
       this.showDoubleSwitch = !this.showDoubleSwitch;
       if (this.showDoubleSwitch) {
@@ -354,7 +395,7 @@ export default {
       var currentMapInfoExt;
       if (this.currentMapInfoList.length > 0) {
         currentMapInfoExt = this.currentMapInfoList.filter(
-          (item) => item.layer_level == targetLevelValue.value
+          (item) => item.layer_level == endLevelValue.value
         )[0];
         // console.log(currentMapInfoExt);
         var { layer_name, extent, center } = currentMapInfoExt;
@@ -395,6 +436,10 @@ export default {
       this.showMarkSwitch = false;
       this.showSelectTipSwitch = false;
       this.showHoverTipSwitch = false;
+      if (this.showDoubleSwitch) {
+        // this.map2.removeLayer(this.park2Layer);
+        this.map2.removeLayer(this.map2ShortestRoadLayer);
+      }
     },
     changeMap(value) {
       this.resetMap();
@@ -437,9 +482,12 @@ export default {
       // this.view1.setRotation(Math.PI / 2);
       // this.map1.renderSync();
       if (this.showDoubleSwitch) {
+        console.log(this.currentMapInfoList);
+        console.log(endLevelValue.value);
         this.targetMapInfo = this.currentMapInfoList.filter(
-          (item) => item.layer_level == targetLevelValue.value
+          (item) => item.layer_level == endLevelValue.value
         )[0];
+        console.log(this.targetMapInfo);
         var target_key = this.targetMapInfo.layer_name.toLowerCase();
         this.parkLayer2 = new VectorLayer({
           source: new VectorSource({
@@ -727,21 +775,119 @@ export default {
       //   duration: 3000,
       // });
     },
-    async doLoadCarRoad() {
-      var center = [];
-      await axios
-        .post(
-          `http://42.192.222.62:10010/slotinfo?layer_level=${this.currentMapInfo.layer_level}&layer_key=${this.currentMapInfo.layer_key}&slot_num=${slotValue.value}`
-        )
-        .then((res) => {
-          console.log(res.data);
-          center = res.data.data;
-        })
-        .catch(function (error) {
-          console.log(error);
-          alert("未找到");
-          return;
+    doLoadShortestRoadV2() {
+      console.log("xxxxxxx");
+      var { layer_key, layer_level, layer_name, extent, center } =
+        this.currentMapInfo;
+      if (startLevelValue.value != endLevelValue.value) {
+        console.log(this.map2StartToEnd);
+        var startPoint = this.map2StartToEnd[0];
+        var endPoint = this.map2StartToEnd[1];
+        var viewparams = [
+          "x1:" + startPoint[0],
+          "y1:" + startPoint[1],
+          "x2:" + endPoint[0],
+          "y2:" + endPoint[1],
+          "layer_name:" +
+            ((
+              layer_key +
+              "_" +
+              endLevelValue.value +
+              "_" +
+              "road"
+            ).toLowerCase() || "bj_hx_live_wks_0223_b2_road"),
+        ];
+        var wfsParams = {
+          version: "1.1.0",
+          request: "GetFeature",
+          typeName: "park_map:load_road_shortest_v2",
+          outputFormat: "application/json",
+          srsname: "EPSG:4326",
+          viewparams: viewparams.join(";"),
+        };
+        var paramsStr = new URLSearchParams(wfsParams).toString();
+        console.log(paramsStr);
+        this.map2ShortestRoadLayer = new VectorLayer({
+          source: new VectorSource({
+            format: new GeoJSON(),
+            url: "http://42.192.222.62:8080/geoserver/wfs?" + paramsStr,
+          }),
+          style: new Style({
+            fill: new Fill({
+              color: "#ff0000",
+            }),
+            stroke: new Stroke({
+              color: "#ff0000",
+              width: 4,
+            }),
+          }),
         });
+        this.map2.addLayer(this.map2ShortestRoadLayer);
+        this.map2.render();
+      }
+    },
+    async doLoadCarRoad() {
+      var text = endTextValue.value;
+      var type = typeDict.filter((item) => item.value == endTypeValue.value)[0]
+        .type;
+      var level = endLevelValue.value;
+      var location = [];
+      var center = [];
+      if (startLevelValue.value != endLevelValue.value) {
+        await axios
+          .post(
+            `http://42.192.222.62:10010/feature/location?layer_level=${startLevelValue.value}&layer_key=${this.currentMapInfo.layer_key}&layer_type=text&pres_text=DT12`
+          )
+          .then((res) => {
+            console.log(res.data);
+            center = res.data.data;
+          })
+          .catch(function (error) {
+            console.log(error);
+            alert("未找到");
+            return;
+          });
+        await axios
+          .post(
+            `http://42.192.222.62:10010/feature/location?layer_level=${endLevelValue.value}&layer_key=${this.currentMapInfo.layer_key}&layer_type=${type}&pres_text=DT12`
+          )
+          .then((res) => {
+            console.log(res.data);
+            this.map2StartToEnd.push(res.data.data);
+          })
+          .catch(function (error) {
+            console.log(error);
+            alert("未找到");
+            return;
+          });
+        await axios
+          .post(
+            `http://42.192.222.62:10010/feature/location?layer_level=${endLevelValue.value}&layer_key=${this.currentMapInfo.layer_key}&layer_type=${type}&pres_text=${text}`
+          )
+          .then((res) => {
+            console.log(res.data);
+            this.map2StartToEnd.push(res.data.data);
+          })
+          .catch(function (error) {
+            console.log(error);
+            alert("未找到");
+            return;
+          });
+      } else {
+        await axios
+          .post(
+            `http://42.192.222.62:10010/feature/location?layer_level=${level}&layer_key=${this.currentMapInfo.layer_key}&layer_type=${type}&pres_text=${text}`
+          )
+          .then((res) => {
+            console.log(res.data);
+            center = res.data.data;
+          })
+          .catch(function (error) {
+            console.log(error);
+            alert("未找到");
+            return;
+          });
+      }
       this.carLayer = new VectorLayer({
         source: new VectorSource(),
       });
@@ -767,8 +913,10 @@ export default {
     },
     // 特征定位
     async doLocationFeature(text, type) {
-      text = text || textValue.value;
-      type = type || typeValue.value;
+      text = text || startTextValue.value;
+      type =
+        type ||
+        typeDict.filter((item) => item.value == startTypeValue.value)[0].type;
       var location = [];
       await axios
         .post(
@@ -860,7 +1008,7 @@ export default {
       // });
       this.map1.render();
     },
-    doFastLoadCarRoad() {
+    async doFastLoadCarRoad() {
       this.listMap();
       this.showCarSwitch = false;
       this.showMarkSwitch = false;
@@ -873,6 +1021,12 @@ export default {
       this.map1.removeLayer(this.carStyleLayer);
       this.map1.removeLayer(this.parkLayer);
       this.map1.removeLayer(this.markLayer);
+      if (this.showDoubleSwitch) {
+        this.showDoubleSwitch = false;
+        this.map2StartToEnd = [];
+        this.map2.removeLayer(this.map2ShortestRoadLayer);
+        this.map2.removeLayer(this.park2Layer);
+      }
       // this.changeMap("华熙LIVE·五棵松");
       console.log(this.currentMapInfoList);
       console.log(this.currentMapInfo);
@@ -880,6 +1034,9 @@ export default {
       var { park_name, layer_key, layer_level, layer_name, extent, center } =
         this.currentMapInfo || this.mapInfoList[0];
       console.log(park_name, layer_key);
+      if (startLevelValue.value != endLevelValue.value) {
+        await this.doDoubleMap();
+      }
       this.changeMap(park_name);
       var step1 = false;
       this.map1.on("rendercomplete", (event) => {
@@ -911,6 +1068,15 @@ export default {
                             if (!step6) {
                               this.doLoadShortestRoad();
                               step6 = !step6;
+                              if (
+                                startLevelValue.value != endLevelValue.value
+                              ) {
+                                var step7 = false;
+                                if (!step7) {
+                                  this.doLoadShortestRoadV2();
+                                  step7 = !step7;
+                                }
+                              }
                             }
                           });
                         }
