@@ -134,7 +134,9 @@ const styleFunction = function (feature, resolution) {
         stroke: defaultStrokeStyle,
       }),
     ];
-    style[0].getText().setText(Text);
+    if (style[0].getText()) {
+      style[0].getText().setText(Text);
+    }
     return style;
   } else if (Text && Layer == "HTC-车位号") {
     var style = layerStyles[Layer];

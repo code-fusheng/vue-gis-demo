@@ -18,6 +18,16 @@
       <RouterLink to="/amap">amap</RouterLink>
       <br />
       <RouterLink to="/cesium">cesium</RouterLink>
+      <br />
+      <RouterLink to="/device">设备管理</RouterLink>
+      <br />
+      <RouterLink to="/berth">泊位管理</RouterLink>
+      <br />
+      <RouterLink to="/berth/collect">泊位采集</RouterLink>
+      <br />
+      <RouterLink to="/lpr">车牌识别</RouterLink>
+      <br />
+      <RouterLink to="/lpr/match">匹配结果</RouterLink>
     </a-layout-sider>
     <a-layout>
       <!-- <a-layout-heade>xxx</a-layout-sider> -->

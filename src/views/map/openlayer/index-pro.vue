@@ -181,15 +181,17 @@ import {
         >
         </el-input>
         <el-button size="small" @click="doLoadCarRoad()">查找 </el-button>
-        <!-- <el-button
+        <el-button
           size="small"
           @click="doLoadShortestRoad()"
           :disabled="startToEnd.length != 2"
           >计算路径
-        </el-button> -->
+        </el-button>
         <el-button size="small" @click="doFastLoadCarRoad()">
           一键导航(模拟)
         </el-button>
+        <input type="file" id="myFileInput" />
+        <!-- <el-button size="small" @click="testMapUpload()"> 上传地图 </el-button> -->
       </a-layout-header>
       <a-layout-content>
         <div class="map-box">
@@ -231,13 +233,12 @@ const levelValue = ref("");
 const coordinateTypeValue = ref("EPSG:4326");
 
 // 起点终点选定值
-const startTypeValue = ref("查询机");
-const startLevelValue = ref("B2");
-const startTextValue = ref("查询机");
-
-const endLevelValue = ref("B3");
+const startTypeValue = ref("车位");
+const startLevelValue = ref("l1");
+const startTextValue = ref("E6-15");
+const endLevelValue = ref("l1");
 const endTypeValue = ref("车位");
-const endTextValue = ref("A2-001");
+const endTextValue = ref("A2-15");
 
 const typeDict = [
   {
@@ -260,6 +261,7 @@ const typeDict = [
 export default {
   data() {
     return {
+      mapFile: [],
       key: "",
       mapInfoList: [],
       currentMapInfoList: [],
@@ -363,12 +365,10 @@ export default {
       var body = {
         layerType: "base",
       };
-      axios
-        .post("http://42.192.222.62:10010/mapinfo/page", body)
-        .then((res) => {
-          console.log(res.data);
-          this.mapInfoList = res.data.data;
-        });
+      axios.post("http://47.111.158.6:10010/map/map/page", body).then((res) => {
+        console.log(res.data);
+        this.mapInfoList = res.data.data;
+      });
     },
     // 开启双地图
     async doDoubleMap() {
@@ -399,13 +399,13 @@ export default {
         )[0];
         // console.log(currentMapInfoExt);
         var { layer_name, extent, center } = currentMapInfoExt;
-        var key = layer_name.toLowerCase();
+        var key = layer_name.toLowerCase() + "_base";
         this.initMap2();
         this.initView2();
         this.parkLayer2 = new VectorLayer({
           source: new VectorSource({
             format: new GeoJSON(),
-            url: `http://42.192.222.62:8080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${key}&outputFormat=application/json&srsname=EPSG:4326`,
+            url: `http://47.111.158.6:18080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${key}&outputFormat=application/json&srsname=EPSG:4326`,
           }),
           style: styleFunction,
         });
@@ -458,11 +458,11 @@ export default {
       levelValue.value = this.currentMapInfo.layer_level;
       console.table(this.currentMapInfo);
       var { layer_name, extent, center } = this.currentMapInfo;
-      var key = layer_name.toLowerCase();
+      var key = layer_name.toLowerCase() + "_base";
       this.parkLayer = new VectorLayer({
         source: new VectorSource({
           format: new GeoJSON(),
-          url: `http://42.192.222.62:8080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${key}&outputFormat=application/json&srsname=EPSG:4326`,
+          url: `http://47.111.158.6:18080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${key}&outputFormat=application/json&srsname=EPSG:4326`,
         }),
         style: styleFunction,
       });
@@ -488,11 +488,11 @@ export default {
           (item) => item.layer_level == endLevelValue.value
         )[0];
         console.log(this.targetMapInfo);
-        var target_key = this.targetMapInfo.layer_name.toLowerCase();
+        var target_key = this.targetMapInfo.layer_name.toLowerCase() + "_base";
         this.parkLayer2 = new VectorLayer({
           source: new VectorSource({
             format: new GeoJSON(),
-            url: `http://42.192.222.62:8080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${target_key}&outputFormat=application/json&srsname=EPSG:4326`,
+            url: `http://47.111.158.6:18080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${target_key}&outputFormat=application/json&srsname=EPSG:4326`,
           }),
           style: styleFunction,
         });
@@ -508,16 +508,16 @@ export default {
       )[0];
       console.table(this.currentMapInfo);
       var { layer_name, extent, center } = this.currentMapInfo;
-      var key = layer_name.toLowerCase();
+      var key = layer_name.toLowerCase() + "_base";
       this.parkLayer = new VectorLayer({
         source: new VectorSource({
           format: new GeoJSON(),
-          url: `http://42.192.222.62:8080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${key}&outputFormat=application/json&srsname=EPSG:4326`,
+          url: `http://47.111.158.6:18080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${key}&outputFormat=application/json&srsname=EPSG:4326`,
         }),
         style: styleFunction,
       });
       this.map1.addLayer(this.parkLayer);
-      // if (this.currentMapInfo.layer_level == "B2") {
+      // if (this.currentMapInfo.layer_level == "b2") {
       //   this.view1.setZoom(11.786666666666667);
       // } else {
       //   this.view1.setZoom(5.099456960967731);
@@ -546,7 +546,7 @@ export default {
         this.markLayer = new VectorLayer({
           source: new VectorSource({
             format: new GeoJSON(),
-            url: `http://42.192.222.62:8080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${key}&outputFormat=application/json&srsname=EPSG:4326`,
+            url: `http://47.111.158.6:18080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${key}&outputFormat=application/json&srsname=EPSG:4326`,
           }),
           style: styleFunction,
         });
@@ -569,7 +569,7 @@ export default {
           distance: 50,
           source: new VectorSource({
             format: new GeoJSON(),
-            url: `http://42.192.222.62:8080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${key}&outputFormat=application/json&srsname=EPSG:4326`,
+            url: `http://47.111.158.6:18080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${key}&outputFormat=application/json&srsname=EPSG:4326`,
           }),
         });
         this.textLayer = new VectorLayer({
@@ -579,7 +579,7 @@ export default {
         // this.textLayer = new VectorLayer({
         //   source: new VectorSource({
         //     format: new GeoJSON(),
-        //     url: `http://42.192.222.62:8080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${key}&outputFormat=application/json&srsname=EPSG:4326`,
+        //     url: `http://47.111.158.6:18080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${key}&outputFormat=application/json&srsname=EPSG:4326`,
         //   }),
         //   style: styleFunction,
         // });
@@ -597,7 +597,7 @@ export default {
         this.roadLayer = new VectorLayer({
           source: new VectorSource({
             format: new GeoJSON(),
-            url: `http://42.192.222.62:8080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${key}&outputFormat=application/json&srsname=EPSG:4326`,
+            url: `http://47.111.158.6:18080/geoserver/wfs?version=1.1.0&request=GetFeature&typeName=park_map:${key}&outputFormat=application/json&srsname=EPSG:4326`,
           }),
         });
         this.map1.addLayer(this.roadLayer);
@@ -739,6 +739,20 @@ export default {
           ((layer_key + "_" + layer_level + "_" + "road").toLowerCase() ||
             "bj_hx_live_wks_0223_b2_road"),
       ];
+      // const params = {
+      //   LAYERS: "park_map:load_road_shortest_v2",
+      //   VERSION: "1.1.0",
+      //   REQUEST: "GetMap",
+      //   FORMAT: "image/png",
+      //   exceptions: "application/vnd.ogc.se_inimage",
+      // };
+      // params.viewparams = viewparams.join(";");
+      // this.shortestRoadLayer = new ImageLayer({
+      //   source: new ImageWMS({
+      //     url: "http://47.111.158.6:18080/geoserver/wms",
+      //     params,
+      //   }),
+      // });
       // WFS 请求
       const wfsParams = {
         version: "1.1.0",
@@ -753,7 +767,7 @@ export default {
       this.shortestRoadLayer = new VectorLayer({
         source: new VectorSource({
           format: new GeoJSON(),
-          url: "http://42.192.222.62:8080/geoserver/wfs?" + paramsStr,
+          url: "http://47.111.158.6:18080/geoserver/wfs?" + paramsStr,
         }),
         style: new Style({
           fill: new Fill({
@@ -810,7 +824,7 @@ export default {
         this.map2ShortestRoadLayer = new VectorLayer({
           source: new VectorSource({
             format: new GeoJSON(),
-            url: "http://42.192.222.62:8080/geoserver/wfs?" + paramsStr,
+            url: "http://47.111.158.6:18080/geoserver/wfs?" + paramsStr,
           }),
           style: new Style({
             fill: new Fill({
@@ -836,7 +850,7 @@ export default {
       if (startLevelValue.value != endLevelValue.value) {
         await axios
           .post(
-            `http://42.192.222.62:10010/feature/location?layer_level=${startLevelValue.value}&layer_key=${this.currentMapInfo.layer_key}&layer_type=text&pres_text=DT12`
+            `http://47.111.158.6:10010/map/feature/location?layer_level=${startLevelValue.value}&layer_key=${this.currentMapInfo.layer_key}&layer_type=text&pros_text=DT12`
           )
           .then((res) => {
             console.log(res.data);
@@ -849,7 +863,7 @@ export default {
           });
         await axios
           .post(
-            `http://42.192.222.62:10010/feature/location?layer_level=${endLevelValue.value}&layer_key=${this.currentMapInfo.layer_key}&layer_type=${type}&pres_text=DT12`
+            `http://47.111.158.6:10010/map/feature/location?layer_level=${endLevelValue.value}&layer_key=${this.currentMapInfo.layer_key}&layer_type=${type}&pros_text=DT12`
           )
           .then((res) => {
             console.log(res.data);
@@ -862,7 +876,7 @@ export default {
           });
         await axios
           .post(
-            `http://42.192.222.62:10010/feature/location?layer_level=${endLevelValue.value}&layer_key=${this.currentMapInfo.layer_key}&layer_type=${type}&pres_text=${text}`
+            `http://47.111.158.6:10010/map/feature/location?layer_level=${endLevelValue.value}&layer_key=${this.currentMapInfo.layer_key}&layer_type=${type}&pros_text=${text}`
           )
           .then((res) => {
             console.log(res.data);
@@ -876,7 +890,7 @@ export default {
       } else {
         await axios
           .post(
-            `http://42.192.222.62:10010/feature/location?layer_level=${level}&layer_key=${this.currentMapInfo.layer_key}&layer_type=${type}&pres_text=${text}`
+            `http://47.111.158.6:10010/map/feature/location?layer_level=${level}&layer_key=${this.currentMapInfo.layer_key}&layer_type=${type}&pros_text=${text}`
           )
           .then((res) => {
             console.log(res.data);
@@ -920,7 +934,7 @@ export default {
       var location = [];
       await axios
         .post(
-          `http://42.192.222.62:10010/feature/location?layer_level=${this.currentMapInfo.layer_level}&layer_key=${this.currentMapInfo.layer_key}&layer_type=${type}&pres_text=${text}`
+          `http://47.111.158.6:10010/map/feature/location?layer_level=${this.currentMapInfo.layer_level}&layer_key=${this.currentMapInfo.layer_key}&layer_type=${type}&pros_text=${text}`
         )
         .then((res) => {
           console.log(res.data);
@@ -1035,6 +1049,7 @@ export default {
         this.currentMapInfo || this.mapInfoList[0];
       console.log(park_name, layer_key);
       if (startLevelValue.value != endLevelValue.value) {
+        console.log("开启双地图");
         await this.doDoubleMap();
       }
       this.changeMap(park_name);
@@ -1090,6 +1105,13 @@ export default {
         }
       });
     },
+    testMapUpload() {
+      var formData = new FormData();
+      formData.append("park_id", "1");
+      formData.append("park_name", "华熙LIVE·五棵松_WSG");
+      formData.append("file", this.mapFile);
+      axios.post("http://47.111.158.6:10010/map/map/upload", formData);
+    },
   },
   mounted() {
     this.listMap();
@@ -1120,6 +1142,12 @@ export default {
         }
       })();
     };
+    const fileInput = document.getElementById("myFileInput");
+    fileInput.addEventListener("change", (event) => {
+      // 获取选择的文件
+      this.mapFile = event.target.files[0];
+      console.log(this.mapFile);
+    });
   },
 };
 </script>

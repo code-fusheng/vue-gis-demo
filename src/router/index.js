@@ -61,6 +61,31 @@ const router = createRouter({
       name: "cesium",
       component: () => import("../views/map/cesium/index.vue"),
     },
+    {
+      path: "/device",
+      name: "device",
+      component: () => import("../views/robot/device/index.vue"),
+    },
+    {
+      path: "/berth",
+      name: "berth",
+      component: () => import("../views/robot/berth/index.vue"),
+    },
+    {
+      path: "/berth/collect",
+      name: "berthCollect",
+      component: () => import("../views/robot/berth/collect.vue"),
+    },
+    {
+      path: "/lpr",
+      name: "lpr",
+      component: () => import("../views/robot/lpr/index.vue"),
+    },
+    {
+      path: "/lpr/match",
+      name: "lprMatch",
+      component: () => import("../views/robot/lpr/match.vue"),
+    },
   ],
 });
 
