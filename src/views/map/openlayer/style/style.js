@@ -20,6 +20,9 @@ const geomStyles = {
   MultiPolygon: [],
 };
 
+//
+const berthStatusStyles = {};
+
 // 图层样式组
 const layerStyles = {
   "HTC-轮廓": [

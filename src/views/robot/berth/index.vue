@@ -44,7 +44,7 @@ export default {
   methods: {
     listDevice() {
       axios
-        .post("http://47.111.158.6:10251/robot/berth/list", limitDto.value)
+        .post("http://localhost:10240/robot/berth/list", limitDto.value)
         .then((res) => {
           console.log(res.data);
           berthData.value = res.data.data.list;

@@ -107,6 +107,9 @@ import {
         <el-button size="small" @click="doDoubleMap()">
           {{ !showDoubleSwitch ? "开启双地图" : "关闭双地图" }}
         </el-button>
+        <el-button size="small" @click="loadBerthStatus()">
+          渲染车位状态
+        </el-button>
         <!-- <el-button size="small" @click="doLoadDoubleMap()">
           加载双地图
         </el-button> -->
@@ -190,7 +193,7 @@ import {
         <el-button size="small" @click="doFastLoadCarRoad()">
           一键导航(模拟)
         </el-button>
-        <input type="file" id="myFileInput" />
+        <!-- <input type="file" id="myFileInput" /> -->
         <!-- <el-button size="small" @click="testMapUpload()"> 上传地图 </el-button> -->
       </a-layout-header>
       <a-layout-content>
@@ -1112,6 +1115,55 @@ export default {
       formData.append("file", this.mapFile);
       axios.post("http://47.111.158.6:10010/map/map/upload", formData);
     },
+    async loadBerthStatus() {
+      let body = {};
+      let berthStatusList = [];
+      await axios
+        .post("http://localhost:10240/robot/berth/status/list", body)
+        .then((res) => {
+          console.log(res);
+          berthStatusList = res.data.data.list;
+        });
+      console.log(berthStatusList);
+      this.showCarSwitch = !this.showCarSwitch;
+      this.map1.removeLayer(this.carStyleLayer);
+      this.carStyleLayer = new VectorLayer({
+        source: new VectorSource(),
+      });
+      var features = this.parkLayer.getSource().getFeatures();
+      features.forEach((item) => {
+        var { Text, Layer } = JSON.parse(item.values_.properties);
+        console.log(Text);
+        if (Layer === "HTC-停车位") {
+          var coor = item.getGeometry().getCoordinates();
+          var carPolygon = new Polygon([coor]);
+          var carFeature = new Feature({
+            geometry: carPolygon,
+          });
+          let berthStatus = berthStatusList.find(function (item) {
+            return item.berthNum == Text;
+          });
+          console.log(berthStatus?.status);
+          let status = berthStatus?.status || 0;
+          if (status == 0) {
+            carFeature.setStyle(layerStyles[Layer]);
+          } else {
+            let style = new Style({
+              fill: new Fill({
+                color: "#FF0000",
+              }),
+              stroke: new Stroke({
+                color: "#988a8a",
+                width: 0.5,
+              }),
+            });
+            carFeature.setStyle(style);
+          }
+          this.carStyleLayer.getSource().addFeature(carFeature);
+        }
+      });
+      this.map1.addLayer(this.carStyleLayer);
+    },
   },
   mounted() {
     this.listMap();
@@ -1142,12 +1194,12 @@ export default {
         }
       })();
     };
-    const fileInput = document.getElementById("myFileInput");
-    fileInput.addEventListener("change", (event) => {
-      // 获取选择的文件
-      this.mapFile = event.target.files[0];
-      console.log(this.mapFile);
-    });
+    // const fileInput = document.getElementById("myFileInput");
+    // fileInput.addEventListener("change", (event) => {
+    //   // 获取选择的文件
+    //   this.mapFile = event.target.files[0];
+    //   console.log(this.mapFile);
+    // });
   },
 };
 </script>
