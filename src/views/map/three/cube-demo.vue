@@ -4,8 +4,8 @@ import * as THREE from "three";
 </script>
 
 <template>
-  <div id="three-box">
-    <ComRouter />
-  </div>
-  <div>xxx</div>
-</template>
+    <div>
+      <ComRouter />
+      <div id="three-box"></div>
+    </div>
+  </template>
