@@ -1,0 +1,20 @@
+<html>
+
+<head>
+    <script src="adapter.min.js"></script>
+    <script src="webrtcstreamer.js"></script>
+    <script>
+        var webRtcServer = null;
+        window.onload = function () {
+            webRtcServer = new WebRtcStreamer("video", location.protocol + "//47.111.158.6:8000");
+            webRtcServer.connect("rtmp://47.111.158.6/live/1");
+        }
+        window.onbeforeunload = function () { webRtcServer.disconnect(); }
+    </script>
+</head>
+
+<body>
+    <video id="video" autoplay />
+</body>
+
+</html>

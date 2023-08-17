@@ -10,7 +10,7 @@ import Antd from "ant-design-vue";
 import "ant-design-vue/dist/antd.css";
 
 // import "ol-cesium/dist/olcesium.css";
-window.CESIUM_BASE_URL = "/cesium/";
+// window.CESIUM_BASE_URL = "/cesium/";
 
 import axios from "axios";
 import VueAxios from "vue-axios";

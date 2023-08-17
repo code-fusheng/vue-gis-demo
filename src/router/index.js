@@ -67,6 +67,11 @@ const router = createRouter({
       component: () => import("../views/robot/device/index.vue"),
     },
     {
+      path: "/camera",
+      name: "camera",
+      component: () => import("../views/robot/device/camera.vue"),
+    },
+    {
       path: "/berth",
       name: "berth",
       component: () => import("../views/robot/berth/index.vue"),
@@ -85,6 +90,41 @@ const router = createRouter({
       path: "/lpr/match",
       name: "lprMatch",
       component: () => import("../views/robot/lpr/match.vue"),
+    },
+    {
+      path: "/video",
+      name: "video.js",
+      component: () => import("../views/video/index.vue"),
+    },
+    {
+      path: "/video/flv",
+      name: "flv",
+      component: () => import("../views/video/flv/index.vue"),
+    },
+    {
+      path: "/webrtc",
+      name: "webrtc",
+      component: () => import("../views/video/webrtc.vue"),
+    },
+    {
+      path: "/three/learn-demo",
+      name: "learn-demo",
+      component: () => import("../views/map/three/learn-demo.vue"),
+    },
+    {
+      path: "/three/index",
+      name: "three-index",
+      component: () => import("../views/map/three/index.vue"),
+    },
+    {
+      path: "/cube-demo",
+      name: "cube-demo",
+      component: () => import("../views/map/three/cube-demo.vue"),
+    },
+    {
+      path: "/three-test",
+      name: "three-test",
+      component: () => import("../views/map/three/three-test.vue"),
     },
   ],
 });

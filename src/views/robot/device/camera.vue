@@ -8,8 +8,8 @@ import { ref } from "vue";
     <el-table :data="deviceData" style="width: 100%">
       <el-table-column prop="id" label="id" />
       <el-table-column prop="uuid" label="uuid" />
-      <el-table-column prop="deviceName" label="车辆名称" fit />
-      <el-table-column prop="deviceType" label="车辆类型" fit />
+      <el-table-column prop="ipAddr" label="IP" fit />
+      <el-table-column prop="deviceDesc" label="相机描述" fit />
       <el-table-column
         prop="lastestHeartbeat"
         show-overflow-tooltip
@@ -20,7 +20,6 @@ import { ref } from "vue";
         show-overflow-tooltip
         label="上次位置"
       />
-      <el-table-column prop="remainBattery" label="剩余电量" fit />
       <el-table-column fixed="right" label="Operations">
         <template #default>
           <el-button link type="primary" size="small" @click="handleClick"
@@ -53,7 +52,7 @@ export default {
   methods: {
     listDevice() {
       axios
-        .post("http://47.111.158.6:10240/robot/car/list", limitDto.value)
+        .post("http://localhost:10240/robot/camera/list", limitDto.value)
         .then((res) => {
           console.log(res.data);
           deviceData.value = res.data.data.list;

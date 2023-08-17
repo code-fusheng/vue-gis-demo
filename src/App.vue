@@ -55,6 +55,21 @@
         </a-sub-menu>
         <a-sub-menu index="2">
           <template #title>机器人 Demo</template>
+          <a-menu-item key="device">
+            <RouterLink to="/device">设备管理</RouterLink>
+          </a-menu-item>
+          <a-menu-item key="camera">
+            <RouterLink to="/camera">相机管理</RouterLink>
+          </a-menu-item>
+          <a-menu-item key="webrtc">
+            <RouterLink to="/webrtc">webrtc</RouterLink>
+          </a-menu-item>
+          <a-menu-item key="video">
+            <RouterLink to="/video">video</RouterLink>
+          </a-menu-item>
+          <a-menu-item key="flv">
+            <RouterLink to="/video/flv">flv</RouterLink>
+          </a-menu-item>
         </a-sub-menu>
       </a-menu>
     </a-layout-sider>
