@@ -126,6 +126,12 @@ const router = createRouter({
       name: "three-test",
       component: () => import("../views/map/three/three-test.vue"),
     },
+    // 工具集
+    {
+      path: "/tools/aliyun-phone",
+      name: "aliyun-phone",
+      component: () => import("../views/tools/phone/aliyun-phone.vue"),
+    },
   ],
 });
 

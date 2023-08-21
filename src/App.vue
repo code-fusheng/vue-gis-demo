@@ -71,6 +71,12 @@
             <RouterLink to="/video/flv">flv</RouterLink>
           </a-menu-item>
         </a-sub-menu>
+        <a-sub-menu index="3">
+          <template #title>工具 Demo</template>
+          <a-menu-item key="aliyun-phone">
+            <RouterLink to="/tools/aliyun-phone">阿里手机验证</RouterLink>
+          </a-menu-item>
+        </a-sub-menu>
       </a-menu>
     </a-layout-sider>
     <a-layout>

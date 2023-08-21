@@ -2,7 +2,7 @@
 import ComRouter from "./ComRouter.vue";
 import * as THREE from "three";
 // 相机控件 引入轨道控制器扩展库OrbitControls.js
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 </script>
 
 <template>
@@ -34,12 +34,12 @@ export default {
 
     // 受光照影响材质
     /**
-    * 网格材质:
-    * - 不受光照影响: 基础 MeshBasicMaterial
-    * - 受光照影响: 漫反射 THREE.MeshLambartMaterial
-    *              高光   ...
-    *              物理   ...
-    */
+     * 网格材质:
+     * - 不受光照影响: 基础 MeshBasicMaterial
+     * - 受光照影响: 漫反射 THREE.MeshLambartMaterial
+     *              高光   ...
+     *              物理   ...
+     */
 
     // 光源
     /**
@@ -55,8 +55,8 @@ export default {
       // color: 0x113b97, // 蓝色
       // 材质半透明设置
       color: 0x0000ff, //设置材质颜色
-      transparent:true,//开启透明
-      opacity:0.5,//设置透明度
+      transparent: true, //开启透明
+      opacity: 0.5, //设置透明度
     });
 
     // 光源设置
@@ -91,9 +91,9 @@ export default {
     // 相机位置 position 虚拟相机
     // 相机在Three.js三维坐标系中的位置
     camera.position.set(200, 200, 500);
-      // camera.position.set(-1000, 0, 0);   // x 轴拉远距离只能看到长方体侧面
+    // camera.position.set(-1000, 0, 0);   // x 轴拉远距离只能看到长方体侧面
 
-    // 相机观察目标 lookAt() 
+    // 相机观察目标 lookAt()
     // 相机观察目标指向Threejs 3D空间中某个位置
     camera.lookAt(0, 0, 0); // 坐标原点
     // camera.lookAt(0, 10, 0);
@@ -107,23 +107,21 @@ export default {
     // far	相机视锥体远裁截面相对相机距离，far-near构成了视锥体高度方向	2000
 
     /* 三维坐标系 - 三维空间 */
-    
+
     // 辅助观察坐标系
     // three.js坐标轴颜色 红R、绿G、蓝B 分别对应坐标系的x、y、z轴，对于three.js的3D坐标系 [ 默认y轴朝上 ] 。
-    const axesHelper = new THREE.AxesHelper(150);   // 参数为坐标系坐标轴线段尺寸大小
+    const axesHelper = new THREE.AxesHelper(150); // 参数为坐标系坐标轴线段尺寸大小
     scene.add(axesHelper);
 
-    
-
-    // 渲染器 
+    // 渲染器
 
     // WebGL 渲染器 WebGLRenderer
     const renderer = new THREE.WebGLRenderer();
     // 设置 Canvas 画布尺寸
-    renderer.setSize(width, height);  // 设置 three.js 渲染区域的尺寸（像素 px）
+    renderer.setSize(width, height); // 设置 three.js 渲染区域的尺寸（像素 px）
 
     // 渲染器 渲染方法 render()
-    renderer.render(scene, camera);    // 执行渲染操作
+    renderer.render(scene, camera); // 执行渲染操作
 
     // 渲染器 Canvas 画布属性 domElement
     document.body.appendChild(renderer.domElement);
@@ -131,7 +129,15 @@ export default {
     document.getElementById("three-box").appendChild(renderer.domElement);
 
     console.log(scene);
-    
+
+    // 设置相机空间 轨道控制器 OrbitControls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    // 如果OrbitControls改变了相机参数，重新调用渲染器渲染三维场景
+    // OrbitControls本质上就是改变相机的参数，比如相机的位置属性，改变相机位置也可以改变相机拍照场景中模型的角度
+    controls.addEventListener("change", function () {
+      console.log("camera.position", camera.position);
+      renderer.render(scene, camera); //执行渲染操作
+    }); //监听鼠标、键盘事件
   },
 };
 </script>
