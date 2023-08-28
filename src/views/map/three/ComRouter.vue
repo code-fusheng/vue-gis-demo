@@ -14,6 +14,9 @@
         <RouterLink to="/three-test">
           <el-button size="small">Test</el-button>
         </RouterLink>
+        <RouterLink to="/gltf-demo">
+          <el-button size="small">gltf-demo</el-button>
+        </RouterLink>
       </a-layout-header>
     </a-layout>
   </div>
