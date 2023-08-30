@@ -25,7 +25,12 @@ export default {
     const height = window.innerHeight - 64;
 
     // 3000改为300，使mesh位于far之外，mesh不在视锥体内，被剪裁掉 => 不显示
-    const camera = new THREE.PerspectiveCamera(30, width / height, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(
+      30,
+      width / height,
+      0.0001,
+      100000000
+    );
     camera.position.set(200, 200, 500);
     camera.lookAt(0, 0, 0);
 
@@ -36,7 +41,7 @@ export default {
 
     // 创建光源
     const light = new THREE.PointLight(0xffffff);
-    light.position.set(0, 0, 0);
+    light.position.set(100, 100, 100);
     scene.add(light);
 
     const axesHelper = new THREE.AxesHelper(150); // 参数为坐标系坐标轴线段尺寸大小
@@ -45,10 +50,10 @@ export default {
     // 创建 GLTF 加载器对象
     const loader = new GLTFLoader();
     // GLTF 加载器 load 方法
-    loader.load("/src/assets/望城坡建筑.glb", function (glb) {
-      console.log(glb);
-      console.log(glb.scene);
-      scene.add(glb.scene);
+    loader.load("/src/assets/x.glb", function (gltf) {
+      console.log(gltf);
+      console.log(gltf.scene);
+      scene.add(gltf.scene);
     });
 
     renderer.setSize(width, height);
